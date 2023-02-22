@@ -1,18 +1,24 @@
-import { createRef } from 'preact'
-import { useEffect, useState } from 'preact/hooks'
+import { useEffect } from 'preact/hooks'
 import './app.css'
-import { runThreejsApp } from './threejs-app';
+import { initThreejsApp, regenerateSword } from './threejs-app';
 
 export function App() {
 
-
   useEffect(() => {
-    runThreejsApp('generator-canvas');
+    initThreejsApp('generator-canvas');
   }, []);
+
+  const getSword = () => {
+    regenerateSword();
+  }
 
   return (
     <>
-      <h1 id='generator-title'>Sword Generator!</h1>
+      <div id='title-container'>
+        <h1>Sword Generator</h1>
+        <button onClick={getSword}>Get new</button>
+      </div>
+
       <canvas id='generator-canvas'></canvas>
     </>
   )
