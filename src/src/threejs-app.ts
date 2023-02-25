@@ -1,4 +1,5 @@
-import { BoxGeometry, BufferAttribute, BufferGeometry, Group, Mesh, MeshBasicMaterial, PerspectiveCamera, Scene, WebGLRenderer } from 'three';
+import { BoxGeometry, Group, Mesh, MeshBasicMaterial, PerspectiveCamera, Scene, WebGLRenderer } from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 
 let scene: Scene;
 let sword: Group;
@@ -21,24 +22,17 @@ export const initThreejsApp = (canvasId: string): void => {
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
+    const controls = new OrbitControls(camera, renderer.domElement);
+
     sword = getSword();
     scene.add(sword);
 
     camera.position.z = 35;
-
-    function rotate(g: Group): void {
-        if (g != null) {
-            g.rotation.x += 0.01;
-            g.rotation.y += 0.01;
-        }
-    }
+    controls.update();
 
     function animate() {
-        
-        rotate(sword);
-
+        controls.update();
         renderer.render(scene, camera);
-
         requestAnimationFrame(animate);
     }
 
@@ -80,10 +74,10 @@ const getSword = (): Group => {
 
     // positioning
     const handleHeight = handle.geometry.parameters.height;
-    
+
     const guardHeight = guard.geometry.parameters.height;
     guard.position.y = handleHeight / 2 + guardHeight / 2;
-    
+
     const bladeHeight = blade.geometry.parameters.height;
     blade.position.y = guard.position.y + guardHeight / 2 + bladeHeight / 2;
 
