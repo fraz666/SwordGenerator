@@ -4,4 +4,4 @@ RUN apk update
 # TOOLS
 RUN apk add nodejs npm git
 
-WORKDIR /app
+WORKDIR /app/src

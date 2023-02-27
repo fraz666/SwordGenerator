@@ -1,4 +1,4 @@
-import { BoxGeometry, Group, Mesh, MeshBasicMaterial, PerspectiveCamera, Scene, WebGLRenderer } from 'three';
+import { AmbientLight, CylinderGeometry, ExtrudeGeometry, Group, Mesh, MeshBasicMaterial, MeshPhongMaterial, PerspectiveCamera, Scene, Shape, WebGLRenderer } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 
 let scene: Scene;
@@ -27,6 +27,9 @@ export const initThreejsApp = (canvasId: string): void => {
     sword = getSword();
     scene.add(sword);
 
+    const light = new AmbientLight(0x404040); // soft white light
+    scene.add(light);
+
     camera.position.z = 35;
     controls.update();
 
@@ -50,40 +53,121 @@ const getRandInt2 = (base: number, multiplier: number): number => {
     return base + Math.floor(Math.random() * multiplier);
 }
 
+const getRndInteger = (min: number, max: number): number => {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
 const getSword = (): Group => {
 
+    // primitives
+    const idealSwordWidth = getRndInteger(2, 3);
+    const idealSwordHeight = getRndInteger(10, 20);
+    const idealSwordDepth = getRndInteger(1, 2);
+
+    const handleRadius = idealSwordDepth / 2;
+    const handleHeight = getRndInteger(5, 7);
+
+    const guardWidth = idealSwordWidth + 1 + 3 * Math.round(Math.random());
+    const guardHeight = getRndInteger(1, 1.5);
+    const guardDepth = idealSwordDepth + 2 * Math.round(Math.random());
+
+    const bladeWidth = idealSwordWidth;
+    const bladeHeight = getRndInteger(idealSwordHeight - handleHeight, 20);
+    const bladeDepth = 0.1 + 0.05 * Math.random();
+
+    console.log("primitives ideal", { idealSwordWidth, idealSwordHeight, idealSwordDepth });
+    console.log("primitives effective", { handleHeight, guardDepth });
+
     // meshes
-    const sw = getRandInt2(1, 2);
-
-    const hh = getRandInt2(3, 5);
-    const hgeometry = new BoxGeometry(sw, hh, sw);
-    const hmaterial = new MeshBasicMaterial({ color: 0x00ff00 });
-    const handle = new Mesh(hgeometry, hmaterial);
-
-    const gh = getRandInt2(1, 2);
-    const gd = getRandInt2(2, 5);
-    const ggeometry = new BoxGeometry(sw, gh, gd);
-    const gmaterial = new MeshBasicMaterial({ color: 0xff0000 });
-    const guard = new Mesh(ggeometry, gmaterial);
-
-    const bh = getRandInt2(3, 10);
-    const bd = getRandInt2(1, 2);
-    const geometry = new BoxGeometry(sw, bh, bd);
-    const material = new MeshBasicMaterial({ color: 0x0000ff });
-    const blade = new Mesh(geometry, material);
+    const handle = getHandle(handleRadius, handleHeight);
+    const guard = getGuard(guardWidth, guardHeight, guardDepth);
+    const blade = getBlade(bladeWidth, bladeHeight, bladeDepth, Math.random() > 0.5);
 
     // positioning
-    const handleHeight = handle.geometry.parameters.height;
-
-    const guardHeight = guard.geometry.parameters.height;
-    guard.position.y = handleHeight / 2 + guardHeight / 2;
-
-    const bladeHeight = blade.geometry.parameters.height;
-    blade.position.y = guard.position.y + guardHeight / 2 + bladeHeight / 2;
+    guard.position.y = handleHeight / 2;
+    blade.position.y = guard.position.y + guardHeight;
 
     const group = new Group();
     group.add(handle);
     group.add(guard);
     group.add(blade);
     return group;
+}
+
+const getHandle = (radius: number, height: number): Mesh => {
+    console.info("handle", { radius, height })
+
+    const r1 = radius;
+    const r2 = radius - Math.random() * 0.05;
+
+    const geometry = new CylinderGeometry(r1, r2, height, 10, 1, false);
+    const material = new MeshBasicMaterial({ color: 0x00ff00 });
+    return new Mesh(geometry, material);
+}
+
+const getGuard = (width: number, height: number, depth: number): Mesh => {
+    console.info("guard", { width, height, depth })
+
+    const halfWidth = width / 2;
+    const shape = new Shape();
+    shape.moveTo(-halfWidth, 0)
+    shape.lineTo(halfWidth, 0)
+    shape.lineTo(halfWidth, height)
+    shape.lineTo(-halfWidth, height)
+
+    // TODO investigate on decorations
+    // shape.moveTo(-2, 0)
+    // shape.lineTo(2, 0)
+    // shape.bezierCurveTo(3, 0, 3, 0, 3, 1);
+    // shape.lineTo(-2, 1)
+
+    const extrudeSettings = {
+        steps: 1,
+        depth: depth,
+        bevelEnabled: false
+    };
+
+    const geometry = new ExtrudeGeometry(shape, extrudeSettings);
+    const material = new MeshBasicMaterial({ color: 0xff0000 });
+    const guard = new Mesh(geometry, material);
+
+    // N.B. center to origin after the extrusion
+    guard.position.z = -depth / 2
+
+    return guard;
+}
+
+const getBlade = (width: number, height: number, depth: number, pointy: boolean): Mesh => {
+    console.info("blade", { width, height, depth, pointy })
+
+    const halfWidth = width / 2;
+    const shape = new Shape();
+    shape.moveTo(-halfWidth, 0)
+    shape.lineTo(halfWidth, 0)
+
+    const offset = Math.random();
+    if (pointy) {
+        shape.lineTo(halfWidth - offset, height)
+        shape.lineTo(0, height + 2 * offset)
+        shape.lineTo(-halfWidth + offset, height)
+    }
+    else {
+        shape.lineTo(halfWidth, height)
+        shape.lineTo(-halfWidth, height + 3 * offset)
+    }
+
+    const extrudeSettings = {
+        steps: 1,
+        depth: depth,
+        bevelEnabled: false
+    };
+
+    const geometry = new ExtrudeGeometry(shape, extrudeSettings);
+    const material = new MeshBasicMaterial({ color: 0x0000ff });
+    const blade = new Mesh(geometry, material);
+
+    // N.B. center to origin after the extrusion
+    blade.position.z = -depth / 2
+
+    return blade;
 }
