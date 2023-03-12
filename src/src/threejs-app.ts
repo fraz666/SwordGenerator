@@ -1,56 +1,99 @@
-import { AmbientLight, CylinderGeometry, ExtrudeGeometry, Group, Mesh, MeshBasicMaterial, MeshPhongMaterial, PerspectiveCamera, Scene, Shape, WebGLRenderer } from 'three';
+import { AmbientLight, AnimationAction, AnimationClip, AnimationMixer, Clock, CylinderGeometry, ExtrudeGeometry, Group, LoopRepeat, Mesh, MeshBasicMaterial, MeshPhongMaterial, PerspectiveCamera, Scene, Shape, WebGLRenderer } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+
 
 let scene: Scene;
 let sword: Group;
 
+let animations: AnimationClip[];
+let animationMixer: AnimationMixer;
+let animationAction: AnimationAction;
+
 export const initThreejsApp = (canvasId: string): void => {
 
-    const canvasRef = document.getElementById(canvasId);
-    if (canvasRef == null) {
-        throw Error(`Invalid canvas id: ${canvasId}`);
-    }
+    const loader = new GLTFLoader();
+    loader.load('/sword_animations_sample.glb',
+        (gltf) => {
+            animations = gltf.animations;
 
-    scene = new Scene();
-    const camera = new PerspectiveCamera(
-        75,
-        window.innerWidth / window.innerHeight,
-        0.1,
-        1000
+            const canvasRef = document.getElementById(canvasId);
+            if (canvasRef == null) {
+                throw Error(`Invalid canvas id: ${canvasId}`);
+            }
+
+            scene = new Scene();
+            const camera = new PerspectiveCamera(
+                75,
+                window.innerWidth / window.innerHeight,
+                0.1,
+                1000
+            );
+            const renderer = new WebGLRenderer({ canvas: canvasRef });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            const controls = new OrbitControls(camera, renderer.domElement);
+
+            sword = getSword();
+
+            // attach animations
+            sword.animations = animations;
+            animationMixer = new AnimationMixer( sword );            
+
+            scene.add(sword);
+
+            const light = new AmbientLight(0x404040); // soft white light
+            scene.add(light);
+
+            camera.position.z = 35;
+            controls.update();
+
+            const clock = new Clock(true);
+
+            function renderScene() {
+                controls.update();
+                animationMixer.update(clock.getDelta());
+                renderer.render(scene, camera);
+                requestAnimationFrame(renderScene);
+            }
+
+            renderScene();
+
+        },
+        undefined,
+        (error) => {
+            console.error(error);
+        }
     );
-    const renderer = new WebGLRenderer({ canvas: canvasRef });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
-
-    const controls = new OrbitControls(camera, renderer.domElement);
-
-    sword = getSword();
-    scene.add(sword);
-
-    const light = new AmbientLight(0x404040); // soft white light
-    scene.add(light);
-
-    camera.position.z = 35;
-    controls.update();
-
-    function animate() {
-        controls.update();
-        renderer.render(scene, camera);
-        requestAnimationFrame(animate);
-    }
-
-    animate();
 }
 
 export const regenerateSword = (): void => {
     scene.remove(sword);
     sword = getSword();
+    animationMixer = new AnimationMixer( sword );   
     scene.add(sword);
 }
 
+export const setFlipAnimation = (): void => {
+    playAnimationByIndex(0);
+}
 
-const getRandInt2 = (base: number, multiplier: number): number => {
-    return base + Math.floor(Math.random() * multiplier);
+export const setSpinAnimation = (): void => {
+    playAnimationByIndex(1);
+}
+
+export const stopAnimation = (): void => {
+    animationAction?.stop();
+}
+
+const playAnimationByIndex = (i: number): void => {
+    stopAnimation();
+    
+    const anim = animations[i];
+    animationAction = animationMixer.clipAction( anim );
+    animationAction.loop = LoopRepeat;
+    animationAction.play();
 }
 
 const getRndInteger = (min: number, max: number): number => {
